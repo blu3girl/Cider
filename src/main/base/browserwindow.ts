@@ -19,7 +19,7 @@ import {
 import {Stream} from "stream";
 import {networkInterfaces} from "os";
 import * as mm from 'music-metadata';
-import fetch from 'electron-fetch'
+const fetch = require("node-fetch")
 import {wsapi} from "./wsapi";
 import {utils} from './utils';
 import {Plugins} from "./plugins";
@@ -863,9 +863,10 @@ export class BrowserWindow {
                     `${url}/archive/refs/heads/main.zip`
                 );
                 let repo = url.split("/").slice(-2).join("/");
-                let apiRepo = await fetch(
+                let apiResponse = await fetch(
                     `https://api.github.com/repos/${repo}`
-                ).then((res) => res.json());
+                )
+                let apiRepo: any = await apiResponse.json()
                 console.debug(`REPO ID: ${apiRepo.id}`);
                 // extract the files from the first folder in the zip response
                 let zip = new AdmZip(await response.buffer());
@@ -875,9 +876,10 @@ export class BrowserWindow {
                 }
                 console.log(join(utils.getPath("plugins"), "gh_" + apiRepo.id))
                 zip.extractEntryTo(entry, join(utils.getPath("plugins"), "gh_" + apiRepo.id), false, true);
-                let commit = await fetch(
+                let commitReponse = await fetch(
                     `https://api.github.com/repos/${repo}/commits`
-                ).then((res) => res.json());
+                )
+                let commit:any = await commitReponse.json()
                 console.debug(`COMMIT SHA: ${commit[0].sha}`);
                 let theme = JSON.parse(
                     readFileSync(join(utils.getPath("plugins"), "gh_" + apiRepo.id, "package.json"), "utf8")
@@ -910,9 +912,10 @@ export class BrowserWindow {
                     `${url}/archive/refs/heads/main.zip`
                 );
                 let repo = url.split("/").slice(-2).join("/");
-                let apiRepo = await fetch(
+                let apiResponse = await fetch(
                     `https://api.github.com/repos/${repo}`
-                ).then((res) => res.json());
+                )
+                let apiRepo: any = await apiResponse.json()
                 console.debug(`REPO ID: ${apiRepo.id}`);
                 // extract the files from the first folder in the zip response
                 let zip = new AdmZip(await response.buffer());
@@ -922,9 +925,10 @@ export class BrowserWindow {
                 }
                 console.log(join(utils.getPath("themes"), "gh_" + apiRepo.id))
                 zip.extractEntryTo(entry, join(utils.getPath("themes"), "gh_" + apiRepo.id), false, true);
-                let commit = await fetch(
+                let commitResponse = await fetch(
                     `https://api.github.com/repos/${repo}/commits`
-                ).then((res) => res.json());
+                )
+                let commit: any = await commitResponse.json()
                 console.debug(`COMMIT SHA: ${commit[0].sha}`);
                 let theme = JSON.parse(
                     readFileSync(join(utils.getPath("themes"), "gh_" + apiRepo.id, "theme.json"), "utf8")
@@ -1432,12 +1436,18 @@ export class BrowserWindow {
         ipcMain.on("getPreviewURL", (_event, url) => {
 
             fetch(url)
+                /** @ts-ignore **/
+
                 .then(res => res.buffer())
+                /** @ts-ignore **/
+
                 .then(async (buffer) => {
                     const metadata = await mm.parseBuffer(buffer, 'audio/x-m4a');
                     let SoundCheckTag = metadata.native.iTunes[1].value
                     console.log('sc', SoundCheckTag)
                     BrowserWindow.win.webContents.send('SoundCheckTag', SoundCheckTag)
+                    /** @ts-ignore **/
+
                 }).catch(err => {
                 console.log(err)
             });

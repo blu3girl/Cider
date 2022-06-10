@@ -1,6 +1,6 @@
 import {AutoClient} from 'discord-auto-rpc'
 import {ipcMain} from "electron";
-import fetch from 'electron-fetch'
+const fetch = require("node-fetch")
 
 export default class DiscordRPC {
 
@@ -63,8 +63,10 @@ export default class DiscordRPC {
                         'User-Agent': _win.webContents.getUserAgent()
                     },
                 })
+                    /** @ts-ignore **/
+
                     .then(res => res.json())
-                    .then(function (json) {
+                    .then(function (json: any) {
                         self._attributes["artwork"]["url"] = json.url
                         self.setActivity(self._attributes)
                     })

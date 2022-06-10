@@ -1,7 +1,7 @@
 import * as ElectronStore from 'electron-store';
 import * as electron from "electron";
 import {app} from "electron";
-import fetch from "electron-fetch";
+// import fetch from "electron-fetch";
 export class Store {
     static cfg: ElectronStore;
 
@@ -340,12 +340,12 @@ export class Store {
             syncData: syncData
         }
 
-        fetch('https://connect.cidercollective.dev/api/v1/setttings/set', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(postBody)
-        })
+        // fetch('https://connect.cidercollective.dev/api/v1/setttings/set', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //     },
+        //     body: JSON.stringify(postBody)
+        // })
     }
 }

@@ -3,7 +3,7 @@ import * as path from "path";
 import {Store} from "./store";
 import {BrowserWindow as bw} from "./browserwindow";
 import {app, dialog, ipcMain, Notification, shell } from "electron";
-import fetch from "electron-fetch";
+const fetch = require("node-fetch")
 import {AppImageUpdater, NsisUpdater} from "electron-updater";
 import * as log from "electron-log";
 import ElectronStore from "electron-store";
@@ -56,7 +56,11 @@ export class utils {
             i18n = Object.assign(i18n, JSON.parse(fs.readFileSync(path.join(this.paths.i18nPath, `${language}.json`), "utf8")));
         } else if (!fs.existsSync(path.join(this.paths.i18nPath, `${language}.json`))) {
             fetch(`https://raw.githubusercontent.com/ciderapp/Cider/main/src/i18n/${language}.json`)
+                /** @ts-ignore **/
+
                 .then(res => res.json())
+                /** @ts-ignore **/
+
                 .then(res => {
                     if (res) {
                         i18n = Object.assign(i18n, res);

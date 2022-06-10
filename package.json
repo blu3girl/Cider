@@ -60,6 +60,7 @@
     "mdns-js": "git+https://github.com/ciderapp/node-mdns-js.git",
     "mpris-service": "^2.1.2",
     "music-metadata": "^7.12.3",
+    "node-fetch": "2",
     "node-gyp": "^9.0.0",
     "node-ssdp": "^4.0.1",
     "qrcode": "^1.5.0",

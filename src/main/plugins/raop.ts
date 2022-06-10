@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { join, resolve } from 'path';
 import * as CiderReceiver from '../base/castreceiver';
-import fetch from 'electron-fetch';
+const fetch = require("node-fetch")
 import {Stream} from "stream";
 import {spawn} from 'child_process';
 import {Worker} from 'worker_threads';
@@ -324,9 +324,15 @@ export default class RAOP {
             if (url != null && url != '') {
                 //console.log(join(this._app.getPath('userData'), 'temp.png'), url);
                 fetch(url)
+                    /** @ts-ignore **/
+
                     .then(res => res.buffer())
+                    /** @ts-ignore **/
+
                     .then((buffer) => {
                         this.airtunes.setArtwork(this.device.key, buffer, "image/png");
+                        /** @ts-ignore **/
+
                     }).catch(err => {
                         console.log(err)
                     });
