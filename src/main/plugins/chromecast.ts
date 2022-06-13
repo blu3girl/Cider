@@ -15,9 +15,10 @@ export default class ChromecastPlugin {
     private _timer: any;
     private audioClient = require('castv2-client').Client;
     private mdns = require('mdns-js');
-
+    private upnpclient = require('upnp-mediarenderer-client');
     private devices: any = [];
     private castDevices: any = [];
+    private ssdpclient = require('node-ssdp').Client;
 
     // private GCRunning = false;
     // private GCBuffer: any;
@@ -37,7 +38,7 @@ export default class ChromecastPlugin {
 
     private searchForGCDevices() {
         try {
-
+            console.log('lmao1')
             let browser = this.mdns.createBrowser(this.mdns.tcp('googlecast'));
             browser.on('ready', browser.discover);
 
@@ -48,16 +49,16 @@ export default class ChromecastPlugin {
                     this.ondeviceup(service.addresses[0], name+ " (" + (service.type[0]?.description ?? "") + ")" , '', 'googlecast');
                 }
             });
-            const Client = require('node-ssdp').Client;
+            console.log('lmao2')
             // also do a SSDP/UPnP search
-            let ssdpBrowser = new Client();
-            ssdpBrowser.on('response', (headers: any, statusCode: any, rinfo: any) => {
-                var location = getLocation(headers);
-                if (location != null) {
-                    this.getServiceDescription(location, rinfo.address);
-                }
+            // let ssdpBrowser = new this.ssdpclient();
+            // ssdpBrowser.on('response', (headers: any, statusCode: any, rinfo: any) => {
+            //     var location = getLocation(headers);
+            //     if (location != null) {
+            //         this.getServiceDescription(location, rinfo.address);
+            //     }
 
-            });
+            // });
 
             function getLocation(headers: any) {
                 let location = null;
@@ -69,21 +70,27 @@ export default class ChromecastPlugin {
                 return location;
             }
 
-            ssdpBrowser.search('urn:dial-multiscreen-org:device:dial:1');
+            // ssdpBrowser.search('urn:dial-multiscreen-org:device:dial:1');
 
-            // // actual upnp devices  
-            // if (app.cfg.get("audio.enableDLNA")) {
-            //     let ssdpBrowser2 = new Client();
-            //     ssdpBrowser2.on('response',  (headers, statusCode, rinfo) => {
-            //          var location = getLocation(headers);
-            //          if (location != null) {
-            //              this.getServiceDescription(location, rinfo.address);
-            //          }
+            // actual upnp devices  
+            console.log('lmao3')
+            let ssdpBrowser2 = new this.ssdpclient();
+            ssdpBrowser2.on('response',  (headers: any, statusCode: any, rinfo: any) => {
+                console.log('lmao3.5')
+                console.log(rinfo)
+                var location = getLocation(headers);
+                if (location != null) {
+                         this.getServiceDescription(location, rinfo.address);
+                
+                }
 
-            //     });
-            //     ssdpBrowser2.search('urn:schemas-upnp-org:device:MediaRenderer:1');
+            });
+            ssdpBrowser2.search('ssdp:all');
 
-            // }
+            //ssdpBrowser2.search('urn:schemas-upnp-org:device:MediaRenderer:1');
+            console.log('lmao4')
+
+            
 
 
         } catch (e) {
@@ -265,29 +272,31 @@ export default class ChromecastPlugin {
             });
 
         } else {
-            // upnp devices
-            //try {
-            //     client = new MediaRendererClient(UPNPDesc);
-            //     const options = {
-            //         autoplay: true,
-            //         contentType: 'audio/x-wav',
-            //         dlnaFeatures: 'DLNA.ORG_PN=-;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000',
-            //         metadata: {
-            //             title: 'Apple Music Electron',
-            //             creator: 'Streaming ...',
-            //             type: 'audio', // can be 'video', 'audio' or 'image'
-            //             //  url: 'http://' + getIp() + ':' + server.address().port + '/',
-            //             //  protocolInfo: 'DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000;
-            //         }
-            //     };
+           // upnp devices
+            try {
+                client = new this.upnpclient.MediaRendererClient(UPNPDesc);
+                const options = {
+                    autoplay: true,
+                    contentType: 'audio/wav',
+                    dlnaFeatures: 'DLNA.ORG_PN=WAV;DLNA.ORG_OP=00;DLNA.ORG_FLAGS=01700000000000000000000000000000',
+                    metadata: {
+                        title: 'Cider',
+                        creator: 'Streaming ...',
+                        album: 'Cider',
+                        artist: 'Cider',
+                        type: 'audio', // can be 'video', 'audio' or 'image'
+                        url: 'http://' + this.getIp() + ':'+ this.ciderPort +'/audio.wav',
+                        //  protocolInfo: 'DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000;
+                    }
+                };
 
-            //     client.load('http://' + getIp() + ':' + server.address().port + '/a.wav', options, function (err, _result) {
-            //         if (err) throw err;
-            //         console.log('playing ...');
-            //     });
+                client.load('http://' + this.getIp() + ':'+ this.ciderPort +'/audio.wav', options, function (err: any, _result: any) {
+                    if (err) throw err;
+                    console.log('playing ...');
+                });
 
-            // } catch (e) {
-            // }
+            } catch (e) {
+            }
         }
     }
 
