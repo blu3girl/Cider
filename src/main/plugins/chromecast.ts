@@ -50,15 +50,15 @@ export default class ChromecastPlugin {
                 }
             });
             console.log('lmao2')
-            // also do a SSDP/UPnP search
-            // let ssdpBrowser = new this.ssdpclient();
-            // ssdpBrowser.on('response', (headers: any, statusCode: any, rinfo: any) => {
-            //     var location = getLocation(headers);
-            //     if (location != null) {
-            //         this.getServiceDescription(location, rinfo.address);
-            //     }
+            //also do a SSDP/UPnP search
+            let ssdpBrowser = new this.ssdpclient();
+            ssdpBrowser.on('response', (headers: any, statusCode: any, rinfo: any) => {
+                var location = getLocation(headers);
+                if (location != null) {
+                    this.getServiceDescription(location, rinfo.address);
+                }
 
-            // });
+            });
 
             function getLocation(headers: any) {
                 let location = null;
@@ -70,7 +70,7 @@ export default class ChromecastPlugin {
                 return location;
             }
 
-            // ssdpBrowser.search('urn:dial-multiscreen-org:device:dial:1');
+            ssdpBrowser.search('urn:dial-multiscreen-org:device:dial:1');
 
             // actual upnp devices  
             console.log('lmao3')
@@ -85,9 +85,7 @@ export default class ChromecastPlugin {
                 }
 
             });
-            ssdpBrowser2.search('ssdp:all');
-
-            //ssdpBrowser2.search('urn:schemas-upnp-org:device:MediaRenderer:1');
+            ssdpBrowser2.search('urn:schemas-upnp-org:device:MediaRenderer:1');
             console.log('lmao4')
 
             
