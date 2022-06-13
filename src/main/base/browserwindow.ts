@@ -1362,7 +1362,7 @@ export class BrowserWindow {
             function bitratechange(e: any) {
                 var t = e.length;
                 let sampleRate = 96.0;
-                let outputSampleRate = 48.0;
+                let outputSampleRate = 44.1;
                 var s = 0,
                     o = sampleRate / outputSampleRate,
                     u = Math.ceil(t * outputSampleRate / sampleRate),
@@ -1391,7 +1391,7 @@ export class BrowserWindow {
                 header.writeUInt8(16, 16)
                 header.writeUInt8(1, 20)
                 header.writeUInt8(2, 22)
-                header.writeUInt32LE(48000, 24)
+                header.writeUInt32LE(44100, 24)
                 header.writeUInt32LE(16, 28)
                 header.writeUInt8(4, 32)
                 header.writeUInt8(16, 34)

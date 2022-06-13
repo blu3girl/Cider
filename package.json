@@ -65,6 +65,7 @@
     "qrcode": "^1.5.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "request": "^2.88.2",
     "run-script-os": "^1.1.6",
     "source-map-support": "^0.5.21",
     "upnp-mediarenderer-client": "git+https://github.com/vapormusic/node-upnp-mediarenderer-client",

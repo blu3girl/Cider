@@ -77,10 +77,11 @@ export default class ChromecastPlugin {
             let ssdpBrowser2 = new this.ssdpclient();
             ssdpBrowser2.on('response',  (headers: any, statusCode: any, rinfo: any) => {
                 console.log('lmao3.5')
-                console.log(rinfo)
+                console.log(rinfo, headers)
                 var location = getLocation(headers);
                 if (location != null) {
-                         this.getServiceDescription(location, rinfo.address);
+                    console.log('lmao3.51')
+                    this.getServiceDescription(location, rinfo.address);
                 
                 }
 
@@ -97,10 +98,12 @@ export default class ChromecastPlugin {
     }
 
     private getServiceDescription(url: any, address: any) {
-        const request = require('request');
+        console.log("lmao3.52")
+        let request = require('request');
         request.get(url, (error: any, response: any, body: any) => {
             if (!error && response.statusCode === 200) {
                 this.parseServiceDescription(body, address, url);
+                console.log("lmao3.53")
             }
         });
     }
@@ -128,12 +131,15 @@ export default class ChromecastPlugin {
 
     private parseServiceDescription(body: any, address: any, url: any) {
         const parseString = require('xml2js').parseString;
+        console.log("lmao3.54")
         parseString(body, (err: any, result: any) => {
+            console.log("lmao3.55")
+            console.log(err, result?.root != null , result?.root?.device != null)
             if (!err && result && result.root && result.root.device) {
                 const device = result.root.device[0];
                 console.log('device', device);
                 let devicetype = 'googlecast';
-                console.log()
+                console.log("duh")
                 if (device.deviceType && device.deviceType.toString() === 'urn:schemas-upnp-org:device:MediaRenderer:1') {
                     devicetype = 'upnp';
                 }
@@ -272,7 +278,7 @@ export default class ChromecastPlugin {
         } else {
            // upnp devices
             try {
-                client = new this.upnpclient.MediaRendererClient(UPNPDesc);
+                client = new this.upnpclient(UPNPDesc);
                 const options = {
                     autoplay: true,
                     contentType: 'audio/wav',
@@ -294,6 +300,7 @@ export default class ChromecastPlugin {
                 });
 
             } catch (e) {
+                console.log("upnperror",e)
             }
         }
     }
