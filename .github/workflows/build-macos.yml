@@ -51,7 +51,10 @@ jobs:
           submodules: true
 
       - name: "Change Version"
-        run: sudo chmod +x resources/version.sh && ./resources/version.sh || true
+        run: |
+        sudo chmod +x resources/version.sh 
+        ./resources/version.sh || true
+        echo $APP_VERSION
 
       - name: Sign in to EVS
         run: |

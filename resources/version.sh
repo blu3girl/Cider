@@ -17,9 +17,9 @@ else
   echo "Version unchanged, commits since stable is ${COMMITSINCESTABLE}"
 fi
 
-if [[ -z $GITHUB_ENV ]]; then
+
+if [[ -v "${GITHUB_ENV}" ]]; then
   echo "export APP_VERSION=$(node -p -e 'require("./package.json").version')" >> $GITHUB_ENV
-else
+elif [[ -v "${BASH_ENV}" ]]; then
   echo "export APP_VERSION=$(node -p -e 'require("./package.json").version')" >> $BASH_ENV
 fi
-
