@@ -36,9 +36,6 @@ jobs:
       fail-fast: false
       matrix:
         language: [ 'javascript' ]
-        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
-        # Learn more:
-        # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
 
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
@@ -52,9 +49,9 @@ jobs:
 
       - name: "Change Version"
         run: |
-        sudo chmod +x resources/version.sh 
-        ./resources/version.sh || true
-        echo $APP_VERSION
+          sudo chmod +x resources/version.sh
+          ./resources/version.sh || true
+          echo $APP_VERSION
 
       - name: Sign in to EVS
         run: |
@@ -104,7 +101,7 @@ jobs:
 
       - name: Change File Versions
         run: |
-          
+
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.3
