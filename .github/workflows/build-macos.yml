@@ -50,29 +50,6 @@ jobs:
         with:
           submodules: true
 
-          # Initializes the CodeQL tools for scanning.
-          #     - name: Initialize CodeQL
-          #       uses: github/codeql-action/init@v1
-          #       with:
-          #         languages: ${{ matrix.language }}
-          # If you wish to specify custom queries, you can do so here or in a config file.
-          # By default, queries listed here will override any specified in a config file.
-          # Prefix the list here with "+" to use these queries and those in the config file.
-          # queries: ./path/to/local/query, your-org/your-repo/queries@main
-
-      # ℹ️ Command-line programs to run using the OS shell.
-      # 📚 https://git.io/JvXDl
-
-      # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
-      #    and modify them (or add more) to build your code if your project
-      #    uses a compiled language
-
-      #     - name : env
-      #       run: |
-      #         export EVS_ACCOUNT_NAME=${{ secrets.EVS_ACCOUNT_NAME}} && export EVS_PASSWD=${{ secrets.EVS_PASSWD }}
-      #         export CSC_LINK=${{ secrets.CSC_LINK }} && export CSC_KEY_PASSWORD=${{ secrets.CSC_KEY_PASSWORD }}
-      #         export APPLEID=${{ secrets.APPLEID }}  && export APPLEIDPASS=${{ secrets.APPLEIDPASS }}
-
       - name: "Change Version"
         run: sudo chmod +x resources/version.sh && ./resources/version.sh || true
 
@@ -92,18 +69,16 @@ jobs:
           PSC_NAME: ${{ secrets.PSC_NAME }}
           DEVELOPER_DIR: /Applications/Xcode_12.4.app/Contents/Developer
         run: |
-          rm cider.lock || true
-          xcodebuild -version
           yarn install
           cp resources/verror-types node_modules/@types/verror/index.d.ts
           cp resources/macPackager.js node_modules/app-builder-lib/out/macPackager.js 
           yarn dist:universalNotWorking -p never
-      #     - name: Perform CodeQL Analysis
-      #       uses: github/codeql-action/analyze@v1
+
 
       - name: Add license to dmg
         run: |
           npx dmg-license resources/license.json dist/*.dmg
+
 
       - name: Import
         uses: apple-actions/import-codesign-certs@v1
@@ -124,6 +99,10 @@ jobs:
           xcrun stapler staple dist/Cider.pkg || true
           mv dist/*.dmg dist/Cider-$APP_VERSION.dmg
 
+      - name: Change File Versions
+        run: |
+          
+
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.3
         with:
@@ -134,19 +113,6 @@ jobs:
             dist/*.dmg
             dist/*.pkg
 
+
       - name: LS
         run: ls
-          # The desired behavior if no files are found using the provided path.
-#      - name: Release
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          files: |
-#            dist/Cider.dmg
-#            dist/Cider.pkg
-#          body: signed Develop MacOS Builds
-#          name: macOS builds
-#          tag_name: macos-beta
-#          target_commitish: ${{ env.GITHUB_SHA }}
-#          prerelease: true
-#          generate_release_notes: true
-#          fail_on_unmatched_files: false
