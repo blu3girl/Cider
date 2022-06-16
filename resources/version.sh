@@ -18,8 +18,8 @@ else
 fi
 
 
-if [[ -v "${GITHUB_ENV}" ]]; then
+if [[ -v $GITHUB_ENV ]]; then
   echo "export APP_VERSION=$(node -p -e 'require("./package.json").version')" >> $GITHUB_ENV
-elif [[ -v "${BASH_ENV}" ]]; then
+elif [[ -v $BASH_ENV ]]; then
   echo "export APP_VERSION=$(node -p -e 'require("./package.json").version')" >> $BASH_ENV
 fi
