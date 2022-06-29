@@ -738,12 +738,18 @@
                 }
 
                 const id = this.data.attributes.playParams.id ?? this.data.id;
-                //console.log("1")
+                console.log("in cider-playlist.ejs")
                 const kind = this.data.attributes.playParams.kind ?? this.data.type ?? '';
                 //console.log("1")
                 const truekind = (!kind.endsWith("s")) ? (kind + "s") : kind;
 
+                
+
                 let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
+                console.log(truekind);
+                console.log(id);
+                console.log(query);
+                console.log(query.slice(100));
                 app.mk.stop().then(function () {
                     app.mk.setQueue({ [truekind]: [id], parameters: { l: app.mklang } }).then(function () {
                         app.mk.play().then(function () {
