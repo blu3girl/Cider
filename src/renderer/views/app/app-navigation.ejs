@@ -105,7 +105,7 @@
               $root.getLz("term.about")
             }}</span>
           </button>
-          <button class="usermenu-item" @click="appRoute('settings')">
+          <button class="usermenu-item" @click="modals.settings = true">
             <span class="usermenu-item-icon">
               <%- include("../svg/settings.svg") %>
             </span>
@@ -121,13 +121,21 @@
               $root.getLz("term.logout")
             }}</span>
           </button>
+          <button class="usermenu-item" @click="quit()">
+            <span class="usermenu-item-icon" style="right: 2.5px">
+              <%- include("../svg/x.svg") %>
+            </span>
+            <span class="usermenu-item-name">{{
+              $root.getLz("term.quit")
+            }}</span>
+          </button>
         </div>
       </div>
     </transition>
     <transition name="sidebartransition">
         <%- include("sidebar") %>
     </transition>
-    <%- include("app-content") %>
+    <app-content-area></app-content-area>
     <transition name="drawertransition">
         <div class="app-drawer"
              v-if="drawer.open && drawer.panel == 'lyrics' && lyrics && lyrics != [] && lyrics.length > 0">
