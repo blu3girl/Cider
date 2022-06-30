@@ -70,10 +70,10 @@
                                              @blur="editPlaylist"
                                              @change="editPlaylist"
                                              @keydown.enter="editPlaylist"/></div>
-                                        <!-- <button v-if="(data.attributes.description?.short ?? data.attributes.editorialNotes?.short ) != null" class="more-btn"
+                                        <button v-if="(data.attributes.description?.short ?? data.attributes.editorialNotes?.short ) != null" class="more-btn"
                                                 @click="editorialNotesExpanded = !editorialNotesExpanded">
                                             {{app.getLz('term.showMore')}}
-                                        </button> -->
+                                        </button>
                                     </div>
                                 </div>
                             </template>
@@ -94,6 +94,9 @@
                                 <button class="md-btn md-btn-primary md-btn-icon" style="min-width: 100px;" :style="{'background': '#' +hasHeroObject()?.textColor4 ?? '','border-top': '#' +hasHeroObject()?.textColor3 ?? '','border': '#' +hasHeroObject()?.textColor2 ?? ''}"
                                         @click="app.mk.shuffleMode = 1;play()"><img class="md-ico-shuffle">
                                     {{app.getLz('term.shuffle')}}
+                                </button>
+                                <button class="md-btn md-btn-primary md-btn-icon" style="min-width: 100px;" :style="{'background': '#' +hasHeroObject()?.textColor4 ?? '','border-top': '#' +hasHeroObject()?.textColor3 ?? '','border': '#' +hasHeroObject()?.textColor2 ?? ''}"
+                                        @click="app.mk.shuffleMode = 1;toSpotify()"><img class="md-ico-spotify">
                                 </button>
                                 <button class="md-btn md-btn-icon" style="min-width: 180px;"
                                         v-if="inLibrary!=null && confirm!=true"
@@ -156,13 +159,14 @@
                                     @click="app.mk.shuffleMode = 1;play()"><img class="md-ico-shuffle">
                                 {{app.getLz('term.shuffle')}}
                             </button>
-                            <button class="md-btn md-btn-icon" style="min-width: 180px;"
+                            <!-- <button class="md-btn md-btn-icon" style="min-width: 180px;"
                                     v-if="inLibrary!=null && confirm!=true"
                                     @click="confirmButton()"><img
                                         :class="(!inLibrary) ? 'md-ico-add' : 'md-ico-remove'">
                                 {{ (!inLibrary) ? app.getLz('action.addToLibrary') :
                                 app.getLz("action.removeFromLibrary") }}
-                            </button>
+                            </button> -->
+                            <a href="/spotify/login">Login with Spotify</a>
                             <button class="md-btn md-btn-icon" style="min-width: 180px;" v-if="confirm==true"
                                     @click="(!inLibrary) ? addToLibrary(data.attributes.playParams.id.toString()) : removeFromLibrary(data.attributes.playParams.id.toString()) ">
                                 <img :class="(!inLibrary) ? 'md-ico-add' : 'md-ico-remove'">
@@ -765,18 +769,12 @@
                 }
 
                 const id = this.data.attributes.playParams.id ?? this.data.id;
-                console.log("in cider-playlist.ejs")
                 const kind = this.data.attributes.playParams.kind ?? this.data.type ?? '';
                 //console.log("1")
                 const truekind = (!kind.endsWith("s")) ? (kind + "s") : kind;
 
-                
-
                 let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
-                console.log(truekind);
-                console.log(id);
-                console.log(query);
-                console.log(query.slice(100));
+
                 app.mk.stop().then(function () {
                     app.mk.setQueue({ [truekind]: [id], parameters: { l: app.mklang } }).then(function () {
                         app.mk.play().then(function () {
@@ -792,6 +790,11 @@
                 })
 
 
+            },
+            toSpotify() {
+                let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
+                console.log(query);
+                // console.log(query.slice(100));
             },
             navClass(data) {
                 if (data && typeof data.views != "undefined") return "";
