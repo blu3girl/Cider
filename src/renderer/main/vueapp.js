@@ -216,6 +216,7 @@ const app = new Vue({
             audioPlaybackRate: false,
             showPlaylist: false,
             castMenu: false,
+            pathMenu: false,
             moreInfo: false,
             airplayPW: false,
             settings: false
@@ -858,7 +859,7 @@ const app = new Vue({
             })
 
             ipcRenderer.on('getUpdatedLocalList', (event, data) => {
-                console.log("cider-local", data);
+                // console.log("cider-local", data);
                 this.library.localsongs = data;
             })
 
@@ -1072,6 +1073,8 @@ const app = new Vue({
             if (this.cfg.general.themeUpdateNotification && !this.isDev) {
                 this.checkForThemeUpdates()
             }
+
+            ipcRenderer.invoke("scanLibrary")
         },
         showFoo(querySelector, time) {
             clearTimeout(this.idleTimer);
@@ -1912,7 +1915,7 @@ const app = new Vue({
                     this.routeView(item.relationships.contents.data[0])
                 } else if (item.attributes?.link?.url != null) {
                     if (item.attributes.link.url.includes("viewMultiRoom")) {
-                        const params = new Proxy(new URLSearchParams(item.attributes.link.url), {
+                        const params = new Proxy(new URLSearchParams(new URL(item.attributes.link.url).search), {
                             get: (searchParams, prop) => searchParams.get(prop),
                         });
                         id = params.fcId
@@ -2217,9 +2220,13 @@ const app = new Vue({
         searchLibrarySongs() {
             let self = this
             let prefs = this.cfg.libraryPrefs.songs
-            let albumAdded = self.library?.albums?.listing?.map(function (i) {
-                return { [i.id]: i.attributes?.dateAdded }
-            })
+
+            const albumAdded = {}
+
+            for (const listing of self.library?.albums?.listing ?? []) {
+                albumAdded[listing.id] = listing.attributes?.dateAdded
+            }
+
             let startTime = new Date().getTime()
 
             function sortSongs() {
@@ -2231,12 +2238,11 @@ const app = new Vue({
                     if (prefs.sort == "genre") {
                         aa = a.attributes.genreNames[0]
                         bb = b.attributes.genreNames[0]
-                    }
-                    if (prefs.sort == "dateAdded") {
-                        let albumida = a.relationships?.albums?.data[0]?.id ?? '1970-01-01T00:01:01Z'
-                        let albumidb = b.relationships?.albums?.data[0]?.id ?? '1970-01-01T00:01:01Z'
-                        aa = startTime - new Date(((albumAdded.find(i => i[albumida])) ?? [])[albumida] ?? '1970-01-01T00:01:01Z').getTime()
-                        bb = startTime - new Date(((albumAdded.find(i => i[albumidb])) ?? [])[albumidb] ?? '1970-01-01T00:01:01Z').getTime()
+                    } else if (prefs.sort == "dateAdded") {
+                        let albumida = a.relationships?.albums?.data[0]?.id
+                        let albumidb = b.relationships?.albums?.data[0]?.id
+                        aa = startTime - new Date(albumAdded[albumida] ?? '1970-01-01T00:01:01Z').getTime()
+                        bb = startTime - new Date(albumAdded[albumidb] ?? '1970-01-01T00:01:01Z').getTime()
                     }
                     if (aa == null) {
                         aa = ""
@@ -3497,7 +3503,15 @@ const app = new Vue({
             console.log(truekind, id)
 
             try {
-                if (app.library.songs.displayListing.length > childIndex && parent == "librarysongs") {
+                if (parent == 'playlist:ciderlocal'){
+                    let u = app.library.localsongs.map(i => {return i.id})
+                    app.mk.setQueue({"episodes" : u}).then(()=>{
+                        let id = app.mk.queue._itemIDs.findIndex(element => element == item.id);
+                        app.mk.changeToMediaAtIndex(id)
+                    })
+                   
+                }
+                else if (app.library.songs.displayListing.length > childIndex && parent == "librarysongs") {
                     console.log(item)
                     if (item && ((app.library.songs.displayListing[childIndex].id != item.id))) {
                         childIndex = app.library.songs.displayListing.indexOf(item)
@@ -3801,7 +3815,7 @@ const app = new Vue({
                     type += "s"
                 }
                 type = type.replace("library-", "")
-                let id = item.attributes.playParams.catalogId ?? item.attributes.playParams.id ?? item.id
+                let id = item.attributes.playParams?.catalogId ?? item.attributes.playParams.id ?? item.id
 
                 let index = types.findIndex(function (type) {
                     return type.type == this
@@ -4424,7 +4438,7 @@ const app = new Vue({
                 case "advanced":
                     this.$store.state.pageState.settings.currentTabIndex = 6
                     break;
-                case "keybindings" :
+                case "keybindings":
                     this.$store.state.pageState.settings.currentTabIndex = 7
                     break;
             }
