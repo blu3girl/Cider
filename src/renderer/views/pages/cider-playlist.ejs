@@ -98,6 +98,7 @@
                                 <button class="md-btn md-btn-primary md-btn-icon" style="min-width: 100px;" :style="{'background': '#' +hasHeroObject()?.textColor4 ?? '','border-top': '#' +hasHeroObject()?.textColor3 ?? '','border': '#' +hasHeroObject()?.textColor2 ?? ''}"
                                         @click="app.mk.shuffleMode = 1;toSpotify()"><img class="md-ico-spotify">
                                 </button>
+                                <a href="/spotify/login">Login with Spotify</a>
                                 <button class="md-btn md-btn-icon" style="min-width: 180px;"
                                         v-if="inLibrary!=null && confirm!=true"
                                         @click="confirmButton()"><img
@@ -159,14 +160,13 @@
                                     @click="app.mk.shuffleMode = 1;play()"><img class="md-ico-shuffle">
                                 {{app.getLz('term.shuffle')}}
                             </button>
-                            <!-- <button class="md-btn md-btn-icon" style="min-width: 180px;"
+                            <button class="md-btn md-btn-icon" style="min-width: 180px;"
                                     v-if="inLibrary!=null && confirm!=true"
                                     @click="confirmButton()"><img
                                         :class="(!inLibrary) ? 'md-ico-add' : 'md-ico-remove'">
                                 {{ (!inLibrary) ? app.getLz('action.addToLibrary') :
                                 app.getLz("action.removeFromLibrary") }}
-                            </button> -->
-                            <a href="/spotify/login">Login with Spotify</a>
+                            </button>
                             <button class="md-btn md-btn-icon" style="min-width: 180px;" v-if="confirm==true"
                                     @click="(!inLibrary) ? addToLibrary(data.attributes.playParams.id.toString()) : removeFromLibrary(data.attributes.playParams.id.toString()) ">
                                 <img :class="(!inLibrary) ? 'md-ico-add' : 'md-ico-remove'">
@@ -794,9 +794,33 @@
 
 
             },
-            toSpotify() {
+            async toSpotify() {
                 let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
                 console.log(query);
+                
+                let playlistName = (this.data ?? app.showingPlaylist).attributes.name;
+
+                const requestOptions = {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title: "Vue POST Request Example",
+                        name: playlistName,
+                        songs: query
+                    })
+                };
+                const response = await fetch("http://localhost:9000/spotify/addplaylist", requestOptions);
+                console.log(response);
+                // const data = await response.json();
+
+                // if (!response.ok) {
+                //     // get error message from body or default to response status
+                //     const error = (data && data.message) || response.status;
+                //     return Promise.reject(error);
+                // }
+
+                // this.postId = data.id;
                 // console.log(query.slice(100));
             },
             navClass(data) {

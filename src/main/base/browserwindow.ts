@@ -28,7 +28,12 @@ import * as os from "os";
 import wallpaper from "wallpaper";
 import * as AdmZip from "adm-zip";
 import * as path from 'path';
+import { Debug } from "@sentry/integrations";
 const { readdir } = require('fs').promises;
+let bodyParser = require('body-parser');
+var request = require('request');
+var cors = require('cors');
+var cookieParser = require('cookie-parser');
 
 
 /**
@@ -467,7 +472,10 @@ export class BrowserWindow {
     private startWebServer(): void {
         const app = express();
 
-        app.use(express.static(join(utils.getPath('srcPath'), "./renderer/")));
+        app.use(bodyParser.json());
+        app.use(express.static(join(utils.getPath('srcPath'), "./renderer/")))
+           .use(cors())
+           .use(cookieParser());
         app.set("views", join(utils.getPath('srcPath'), "./renderer/views"));
         app.set("view engine", "ejs");
         let firstRequest = true;
@@ -489,11 +497,12 @@ export class BrowserWindow {
             var redirect_uri = `http://localhost:${this.clientPort}/spotify/callback`; // Your redirect uri
             var stateKey = 'spotify_auth_state';
 
+            var querystring = require('querystring');
+
             const action = req.params.action;
             
             switch (action) {
                 case "login":
-                    var querystring = require('querystring');
                     
                     // generate random 16-char string
                     var randStr = '';
@@ -505,30 +514,33 @@ export class BrowserWindow {
                     res.cookie(stateKey, randStr);
 
                     // your application requests authorization
-                    var scope = 'user-read-private user-read-email';
+                    var scope = 'user-read-private user-read-email playlist-read-private playlist-modify-private playlist-modify-public';
                     res.redirect('https://accounts.spotify.com/authorize?' +
                         querystring.stringify({
-                        response_type: 'code',
-                        client_id: client_id,
-                        scope: scope,
-                        redirect_uri: redirect_uri,
-                        state: randStr
+                            response_type: 'code',
+                            client_id: client_id,
+                            scope: scope,
+                            redirect_uri: redirect_uri,
+                            state: randStr
                         }));
                     break;
                 case "callback":
-                    var request = require('request'); // "Request" library
                     // your application requests refresh and access tokens
                     // after checking the state parameter
                     
                     var code = req.query.code || null;
                     var state = req.query.state || null;
                     var storedState = req.cookies ? req.cookies[stateKey] : null;
+                    console.log("HIIIIIIIIIIIIIIIIIIIIII")
+
+                    console.log(state)
+                    console.log(storedState)
                     
                     if (state === null || state !== storedState) {
                         res.redirect('/#' +
-                        querystring.stringify({
-                            error: 'state_mismatch'
-                        }));
+                            querystring.stringify({
+                                error: 'state_mismatch'
+                            }));
                     } else {
                         res.clearCookie(stateKey);
                         var authOptions = {
@@ -541,6 +553,7 @@ export class BrowserWindow {
                             headers: {
                                 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
                             },
+                            credentials: 'include',
                             json: true
                         };
                     
@@ -549,24 +562,32 @@ export class BrowserWindow {
                         
                                 var access_token = body.access_token,
                                     refresh_token = body.refresh_token;
+
+                                res.cookie('access_token', access_token);
+                                res.cookie('refresh_token', refresh_token);
                         
                                 var options = {
                                     url: 'https://api.spotify.com/v1/me',
                                     headers: { 'Authorization': 'Bearer ' + access_token },
+                                    credentials: 'include',
                                     json: true
                                 };
                         
                                 // use the access token to access the Spotify Web API
                                 request.get(options, function(error :any, response :any, body :any) {
                                     console.log(body);
+                                    console.log(body.id);
+                                    res.cookie('user_id', body.id);
+
+                                    // we can also pass the token to the browser to make requests from there
+                                    res.redirect('/#' +
+                                        querystring.stringify({
+                                            access_token: access_token,
+                                            refresh_token: refresh_token
+                                        }));
                                 });
-                        
-                                // we can also pass the token to the browser to make requests from there
-                                res.redirect('/#' +
-                                    querystring.stringify({
-                                        access_token: access_token,
-                                        refresh_token: refresh_token
-                                    }));
+
+                                
                             } else {
                                 res.redirect('/#' +
                                     querystring.stringify({
@@ -576,33 +597,77 @@ export class BrowserWindow {
                         });
                     }
                     break;
-                // case "/refresh_token":
-                //     // requesting access token from refresh token
-                //     var refresh_token = req.query.refresh_token;
-                //     var authOptionsRefresh = {
-                //         url: 'https://accounts.spotify.com/api/token',
-                //         headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
-                //         form: {
-                //             grant_type: 'refresh_token',
-                //             refresh_token: refresh_token
-                //         },
-                //         json: true
-                //     };
+                case "refresh_token":
+                    // requesting access token from refresh token
+                    var refresh_token = req.cookies ? req.cookies['refresh_token'] : null;
+
+                    if (!refresh_token) {
+                        return res.send("Not logged into Spotify");
+                    }
+
+                    var authOptionsRefresh = {
+                        url: 'https://api.spotify.com/v1/users',
+                        headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
+                        form: {
+                            grant_type: 'refresh_token',
+                            refresh_token: refresh_token
+                        },
+                        json: true
+                    };
                     
-                //     request.post(authOptionsRefresh, function(error :any, response :any, body :any) {
-                //         if (!error && response.statusCode === 200) {
-                //             var access_token = body.access_token;
-                //             res.send({
-                //                 'access_token': access_token
-                //             });
-                //         }
-                //     });
-                //     break;
+                    request.post(authOptionsRefresh, function(error :any, response :any, body :any) {
+                        if (!error && response.statusCode === 200) {
+                            var access_token = body.access_token;
+                            res.cookie('access_token', access_token);
+                            return res.send({
+                                'access_token': access_token
+                            });
+                        }
+                    });
+                    break;
                 default: {
-                    res.send("Invalid action")
+                    return res.send("Invalid action")
                 }
             }
-        })
+        });
+
+        app.post("/spotify/addplaylist", (req, res) => {
+            var access_token = req.cookies ? req.cookies['access_token'] : null;
+            var user_id = req.cookies ? req.cookies['user_id'] : null;
+            console.log(access_token);
+            console.log(user_id);
+            if (!access_token || !user_id) {
+                console.log("Not logged into Spotify!")
+                
+                return res.send("Not logged into Spotify");
+            }
+
+            var playlistName = req.body.name;
+
+            var newPlaylistOptions = {
+                url: `https://api.spotify.com/v1/users/${user_id}/playlists`,
+                headers: {
+                    'Authorization': 'Bearer ' + access_token,
+                },
+                body: {
+                    "name": playlistName,
+                    "public": false,
+                    "description": "Auto-generated playlist imported from Cider (Apple Music). Happy listening! :)))"
+                },
+                json: true
+            }
+
+            console.log(newPlaylistOptions);
+
+            request.post(newPlaylistOptions, function(error :any, response :any, body :any) {
+                if (!error && response.statusCode === 200) {
+                    console.log(body);
+                }
+                console.log(response);
+            });
+
+            return res.send("yay");
+        });
 
         app.get("/", (_req, res) => {
             res.render("main", this.EnvironmentVariables);
