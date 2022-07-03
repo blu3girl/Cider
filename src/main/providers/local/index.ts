@@ -5,11 +5,15 @@ import { utils } from '../../base/utils';
 import * as mm from 'music-metadata';
 import {Md5} from 'ts-md5/dist/md5';
 import e from "express";
+import { EventEmitter } from 'events';
+
+
 
 export class LocalFiles {
     static localSongs: any = [];
     static localSongsArts: any = [];
     public static DB = ProviderDB.db;
+    static eventEmitter = new EventEmitter();
 
     static getDataType(item_id : String | any){
         if ((item_id ?? ('')).startsWith('ciderlocalart'))
@@ -47,6 +51,7 @@ export class LocalFiles {
         let metadatalist = []
         let metadatalistart = []
         let numid = 0;
+
         for (var audio of audiofiles) {
             try {
                 const metadata = await mm.parseFile(audio);
@@ -84,8 +89,8 @@ export class LocalFiles {
                             "assetUrl": "file:///" + audio,
                             "contentAdvisory": "",
                             "releaseDateTime": `${metadata?.common?.year ?? '2022'}-05-13T00:23:00Z`,
-                            "durationInMillis": Math.floor((metadata.format.duration ?? 0) * 1000),
-
+                            "durationInMillis": Math.floor((metadata.format.duration ?? 0) * 1000),       
+                            "bitrate": Math.floor((metadata.format?.bitrate ?? 0) / 1000),
                             "offers": [
                                 {
                                     "kind": "get",
@@ -93,7 +98,14 @@ export class LocalFiles {
                                 }
                             ],
                             "contentRating": "clean"
-                        }
+                        },
+                        flavor: Math.floor((metadata.format?.bitrate ?? 0) / 1000),
+                        localFilesMetadata: {
+                            lossless: metadata.format?.lossless,
+                            container: metadata.format?.container,
+                            bitDepth: metadata.format?.bitsPerSample ?? 0,
+                            sampleRate: metadata.format?.sampleRate ?? 0,         
+                        },                    
                     };
                     let art = {
                         id: "ciderlocal" + lochash,
@@ -105,8 +117,10 @@ export class LocalFiles {
                     ProviderDB.db.putIfNotExists(form)
                     ProviderDB.db.putIfNotExists(art)
                     metadatalist.push(form)
-                }
-                //delete removed tracks
+
+                    if (this.localSongs.length === 0 && numid  % 10 === 0) { // send updated chunks only if there is no previous database
+                        this.eventEmitter.emit('newtracks', metadatalist)}
+                    }
             } catch (e) { }
         }
         this.localSongs = metadatalist;
