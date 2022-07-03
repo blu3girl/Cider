@@ -147,6 +147,7 @@ export class Store {
         },
         "libraryPrefs": {
             "songs": {
+                "scroll": "infinite",
                 "sort": "name",
                 "sortOrder": "asc",
                 "size": "normal"
@@ -173,6 +174,7 @@ export class Store {
             "maikiwiAudio": {
                 "ciderPPE": true,
                 "ciderPPE_value": "MAIKIWI",
+                "opportunisticCorrection_state": "OFF",
                 "atmosphereRealizer1": false,
                 "atmosphereRealizer1_value": "NATURAL_STANDARD",
                 "atmosphereRealizer2": false,
