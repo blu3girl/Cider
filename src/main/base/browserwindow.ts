@@ -28,6 +28,7 @@ import * as os from "os";
 import wallpaper from "wallpaper";
 import * as AdmZip from "adm-zip";
 import { LocalFiles } from "../providers/local/";
+import { startTransaction } from "@sentry/electron";
 
 let bodyParser = require('body-parser');
 var request = require('request');
@@ -474,6 +475,7 @@ export class BrowserWindow {
         BrowserWindow.express = app;
         app.use(express.static(join(utils.getPath('srcPath'), "./renderer/")));
         app.use(bodyParser.json())
+           .use(bodyParser.urlencoded({extended:true}))
            .use(cors())
            .use(cookieParser());
         app.set("views", join(utils.getPath('srcPath'), "./renderer/views"));
@@ -491,7 +493,7 @@ export class BrowserWindow {
             }
         });
 
-        app.get("/spotify/:action", (req, res) => {
+        app.get(/\/spotify\/((login)|(callback)|(refresh_token))/, (req, res) => {
             var client_id = '39405af8c1724985bb91ad74d15f488b'; // Your client id
             var client_secret = 'fb8df471862246f6ac87cc12db19e4bb'; // Your secret
             var redirect_uri = `http://localhost:${this.clientPort}/spotify/callback`; // Your redirect uri
@@ -499,11 +501,10 @@ export class BrowserWindow {
 
             var querystring = require('querystring');
 
-            const action = req.params.action;
+            const action = req.params[0];
             
             switch (action) {
                 case "login":
-                    
                     // generate random 16-char string
                     var randStr = '';
                     var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -631,7 +632,7 @@ export class BrowserWindow {
             }
         });
 
-        app.post("/spotify/addplaylist", (req, res) => {
+        app.post("/spotify/playlists/:action", async (req, res) => {
             var access_token = req.cookies ? req.cookies['access_token'] : null;
             var user_id = req.cookies ? req.cookies['user_id'] : null;
             console.log(access_token);
@@ -639,34 +640,211 @@ export class BrowserWindow {
             if (!access_token || !user_id) {
                 console.log("Not logged into Spotify!")
                 
-                return res.send("Not logged into Spotify");
+                return res.sendStatus(401);
             }
 
-            var playlistName = req.body.name;
-
-            var newPlaylistOptions = {
-                url: `https://api.spotify.com/v1/users/${user_id}/playlists`,
+            var url = "";
+            var playlistOptions = {
+                method: "POST",
                 headers: {
                     'Authorization': 'Bearer ' + access_token,
                 },
-                body: {
-                    "name": playlistName,
-                    "public": false,
-                    "description": "Auto-generated playlist imported from Cider (Apple Music). Happy listening! :)))"
-                },
+                body: "",
                 json: true
             }
 
-            console.log(newPlaylistOptions);
+            switch(req.params.action) {
+                case "new":
+                    let playlistName = req.body.name || null;
+                    if (!playlistName) {
+                        console.log("Error: Must include playlistName for request /playlists/new")
+                        return res.sendStatus(400); // bad request!
+                    }
 
-            request.post(newPlaylistOptions, function(error :any, response :any, body :any) {
-                if (!error && response.statusCode === 200) {
-                    console.log(body);
+                    url = `https://api.spotify.com/v1/users/${user_id}/playlists`;
+                    playlistOptions.body = JSON.stringify({
+                        "name": playlistName,
+                        "public": false,
+                        "description": "Auto-generated playlist imported from Cider (Apple Music). Happy listening! :)))"
+                    });
+                    break;
+                case "add":
+                    let playlist = req.body.playlist || null;
+                    let uris = req.body.uris || null;
+                    if (!playlist || !uris) {
+                        console.log("Error: Must include playlist id & uris for request /playlists/add")
+                        return res.sendStatus(400); // bad request!
+                    }
+                    console.log(uris);
+                    url = `https://api.spotify.com/v1/playlists/${playlist}/tracks`;
+                    playlistOptions.body = JSON.stringify({"uris": uris});
+                    break;
+                default:
+                    console.log(`Error: Invalid action /playlist/${req.params.action}`);
+                    return res.sendStatus(400); // bad request!
+                    break;
+            }
+
+            console.log(playlistOptions);
+
+            var response = await fetch(url, playlistOptions);
+            if (!response.ok) {
+                console.log(`Failed /playlist/${req.params.action} with error ${response.status}`);
+            }
+
+            var body = await response.json();
+            console.log(body);
+
+            return res.send(body.id);
+        });
+
+        app.get("/spotify/findsong", async (req, res) => {
+
+            // filters tracks based on filter input
+            // filter: [name, value]
+            function filterTrack(tracks: any, filter: any) {
+                return tracks.filter((item :any) =>  {
+                    return item[filter[0]] === filter[1];
+                });
+            }
+            
+            var access_token = req.cookies ? req.cookies['access_token'] : null;
+            if (!access_token) {
+                console.log("Not logged into Spotify!")
+                return res.sendStatus(401);
+            }
+
+            let song :any = req.query.name || null;
+            let album = req.query.album || null;
+            let artist = req.query.artist || null;
+            let discNumber = req.query.discNumber ? +req.query.discNumber : null;
+            let trackNumber :any = req.query.trackNumber ? +req.query.trackNumber : null;
+            let explicit = (req.query.explicit === "true");
+
+            if (!song || !album || !artist || !trackNumber || !discNumber) {
+                console.log("Error: song name, artist, or album not specified!");
+                return res.sendStatus(400);
+            }
+
+            var findSongOptions: any = {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + access_token,
+                },
+                json: true
+            };
+
+            async function findTrack(info: any) {
+                var url = ""
+                if (info.song && info.album && info.artist) {
+                    console.log("Trying with song, album, and artist...");
+                    // url = `https://api.spotify.com/v1/search?q=track:${info.song}+album:${info.album}+artist:${info.artist}&type=track`;
                 }
-                console.log(response);
-            });
+                else if (info.album && info.discNumber && info.trackNumber && info.artist) {
+                    console.log("Trying with album, disc, trackNum, and artist...");
+                    // url = `https://api.spotify.com/v1/search?q=album:${info.album}+artist:${info.artist}&type=track`;
+                }
+                else if (info.song && info.artist) {
+                    console.log("Trying with song and artist...");
+                    // url = `https://api.spotify.com/v1/search?q=track:${info.song}+artist:${info.artist}&type=track`;
+                }
+                else if (info.song && info.album) {
+                    console.log("Trying with song and album...");
+                    // url = `https://api.spotify.com/v1/search?q=track:${info.song}+album:${info.album}&type=track`;
+                }
+                else if (info.song) {
+                    console.log("Trying with song...");
+                    // url = `https://api.spotify.com/v1/search?q=track:${info.song}&type=track`;
+                }
+                else if (info.album && info.discNumber && info.trackNumber) {
+                    console.log("Trying with album, disc, and trackNum...");
+                    // url = `https://api.spotify.com/v1/search?q=album:${info.album}&type=track`;
+                }
+                else {
+                    console.log("bad info params in findTrack");
+                    return null; // bad request
+                }
 
-            return res.send("yay");
+                url = "https://api.spotify.com/v1/search?type=track&q=";
+                url += info.song ? `track:${info.song}+` : "";
+                url += info.album ? `album:${info.album}+` : "";
+                url += info.artist ? `artist:${info.artist}+` : "";
+
+                url = encodeURI(url);
+                var tracks = [];
+
+                do {
+                    console.log(url);
+                    let response = await fetch(url, findSongOptions);
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            console.log("Rate-limited!");
+
+                            let timeout = response.headers.get("Retry-After");
+                            if (timeout) {
+                                let timeoutMS = parseInt(timeout)*1000;
+                                console.log(`Waiting for ${timeoutMS}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, timeoutMS));
+                                console.log("Done waiting!");
+                                continue;
+                            }
+                        }
+                        console.log(url);
+                        console.log(response.statusText);
+                        break;
+                    }
+                    
+                    var body = await response.json();
+                    url = body.tracks.next; // get url for next page
+    
+                    let filtered = body.tracks.items;
+                    
+                    if (info.discNumber && info.trackNumber) {
+                        // find tracks with correct disc/track num
+                        filtered = filterTrack(filtered, ["disc_number", info.discNumber]);
+                        filtered = filterTrack(filtered, ["track_number", info.trackNumber]);
+
+                        // if filtered contains correct explicit value, we found our match
+                        let filteredExplicit = filterTrack(filtered, ["explicit", explicit]);
+                        if (filteredExplicit.length > 0) {
+                            return filteredExplicit[0].uri; // found match
+                        }
+                    }
+    
+                    tracks.push(...filtered);
+                }
+                // loop thru all search pages if searching by album/trackNum
+                while(info.trackNumber && url);
+                
+                if (tracks.length === 0) {
+                    return null; // no songs found here
+                }
+
+                // filter by explicit if helps with results
+                let filteredExplicit = filterTrack(tracks, ["explicit", explicit]);
+                if (filteredExplicit.length > 0) {
+                    tracks = filteredExplicit;
+                }
+                
+                // return uri of first song match
+                return tracks[0].uri;
+            }
+            
+            var uri = null;
+
+            uri = uri || await findTrack({song: song, album: album, artist: artist});
+            uri = uri || await findTrack({album: album, discNumber: discNumber, trackNumber: trackNumber, artist: artist});
+            uri = uri || await findTrack({song: song, artist: artist});
+            uri = uri || await findTrack({song: song, album: album});
+            uri = uri || await findTrack({song: song});
+            uri = uri || await findTrack({album: album, discNumber: discNumber, trackNumber: trackNumber});
+
+            if (uri) {
+                return res.send(uri);
+            }
+
+            return res.sendStatus(404);
         });
 
         app.get("/", (_req, res) => {

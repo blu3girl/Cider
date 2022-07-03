@@ -789,26 +789,17 @@
                     }
                 }
 
-<<<<<<< HEAD
-                const id = this.data.attributes.playParams.id ?? this.data.id;
-                const kind = this.data.attributes.playParams.kind ?? this.data.type ?? '';
-=======
                 const id = this.data.attributes.playParams?.id ?? this.data.id;
                 //console.log("1")
                 const kind = this.data.attributes.playParams?.kind ?? this.data.type ?? '';
->>>>>>> 483098215ef45b45f56a6a95a32c400724d11120
                 //console.log("1")
                 if (kind == "podcast-episodes") {kind = "episode"}
                 const truekind = (!kind.endsWith("s")) ? (kind + "s") : kind;
 
                 let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
 
-<<<<<<< HEAD
-                app.mk.stop().then(function () {
-=======
                 app.mk.stop().then(() => {
                     if (id != 'ciderlocal'){
->>>>>>> 483098215ef45b45f56a6a95a32c400724d11120
                     app.mk.setQueue({ [truekind]: [id], parameters: { l: app.mklang } }).then(function () {
                         app.mk.play().then(function () {
                             if (query.length > 100) {
@@ -832,28 +823,106 @@
             async toSpotify() {
                 let query = (this.data ?? app.showingPlaylist).relationships.tracks.data.map(item => new MusicKit.MediaItem(item));
                 console.log(query);
-                
-                let playlistName = (this.data ?? app.showingPlaylist).attributes.name;
 
-                const requestOptions = {
+                let songs = query.map(x => (
+                    {
+                        name: x.title,
+                        album: x.albumName,
+                        artist: x.artistName,
+                        discNumber: x.discNumber,
+                        trackNumber: x.trackNumber,
+                        explicit: x.isExplicitItem,
+                    }));
+
+                console.log(songs)
+                
+
+                //      CREATE NEW PLAYLIST     //
+                let playlistName = (this.data ?? app.showingPlaylist).attributes.name;
+                const newPlaylistOptions = {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: "Vue POST Request Example",
-                        name: playlistName,
-                        songs: query
-                    })
+                    body: JSON.stringify({ name: playlistName })
                 };
-                const response = await fetch("http://localhost:9000/spotify/addplaylist", requestOptions);
-                console.log(response);
-                // const data = await response.json();
 
-                // if (!response.ok) {
-                //     // get error message from body or default to response status
-                //     const error = (data && data.message) || response.status;
-                //     return Promise.reject(error);
-                // }
+                const newPlaylistResponse = await fetch("http://localhost:9000/spotify/playlists/new", newPlaylistOptions);
+                if (!newPlaylistResponse.ok) {
+                    switch(response.status) {
+                        case 401:
+                            console.log("Not logged into Spotify!");
+                            break;
+                        default:
+                            console.log("An error occurred when trying to add playlist!");
+                            break;
+                    }
+                    return;
+                }
+
+                var playlistID = await newPlaylistResponse.text();
+                console.log(`New Playlist ID: ${playlistID}`);
+
+
+                //      FIND ALL SONG URIS IN SPOTIFY       //
+                let stringUrl = "http://localhost:9000/spotify/findsong";
+                var uris = [];
+                const findSongOptions = {
+                    method: "GET",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" }
+                };
+
+                for await (const song of songs) {
+                    let url = new URL(stringUrl);
+                    let params = url.searchParams;
+                    for (const key in song) {
+                        params.append(key, song[key]);
+                    }
+
+                    const songResponse = await fetch(url.toString(), findSongOptions);
+                    if (!songResponse.ok) {
+                        console.log(`${song.name} returned ${songResponse.status}`);
+                        continue;
+                    }
+
+                    let uri = await songResponse.text()
+                    uris.push(uri);
+                }
+
+                console.table(uris);
+                console.log(uris.length);
+
+
+                //      ADD SONGS TO THE PLAYLIST       //
+                let addSongsUrl = "http://localhost:9000/spotify/playlists/add";
+                var uriChunks = []; // break uris into chunks of 100
+                for(var i = 0; i < uris.length; i += 100) {
+                    uriChunks.push(uris.slice(i, i+100));
+                }
+                console.log(uriChunks);
+
+                for (const uriChunk of uriChunks) {
+                    console.log(`Adding ${uriChunk.length} songs...`);
+                    console.log(uriChunk);
+                    const addSongsOptions = {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            playlist: playlistID,
+                            uris: uriChunk
+                        })
+                    };
+
+                    var addSongsResponse = await fetch(addSongsUrl, addSongsOptions);
+                    if (!addSongsResponse.ok) {
+                        console.log(`Add songs to playlist failed with ${addSongsResponse.status}`);
+                    }
+                    
+                    console.log("Done!");
+                }
+                
+                
 
                 // this.postId = data.id;
                 // console.log(query.slice(100));
